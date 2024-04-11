@@ -125,55 +125,75 @@ def averages_per_process(df: pd.DataFrame) -> dict:
     """
     return df.groupby("Sirovina")["Brzina"].mean().round(2).to_dict()
 
-def averages_per_person(df):
-        
-    worker_names_list = unique_values(df, "Ime")
-    average_dict = defaultdict(dict)
+def averages_per_person(df: pd.DataFrame) -> dict:
+    """
+    Calculate the average 'Brzina' for each 'Ime' and 'Sirovina' combination in the given DataFrame.
 
-    for worker in worker_names_list:
-        data = filter_value(df, "Ime")
-        worker_filter = data[worker]
+    This function groups the DataFrame by 'Ime' and 'Sirovina', calculates the mean of 'Brzina' for each group,
+    rounds the mean values to 2 decimal places, and returns a nested dictionary where the outer dictionary's keys
+    are the 'Ime' values and the inner dictionaries' keys are the 'Sirovina' values.
 
-        grouped = worker_filter.groupby("Sirovina")
-        for name, raw_material in grouped:
-            average = raw_material["Brzina"].mean()
-            average = round(average,2)
-            average_dict[worker][name] = average
-    
-    return average_dict
+    Parameters:
+    df (pandas.DataFrame): The input DataFrame. It should have columns 'Ime', 'Sirovina', and 'Brzina'.
 
-def bar_chart(worker, avg_person):
+    Returns:
+    dict: A nested dictionary where the outer dictionary's keys are the 'Ime' values and the inner dictionaries'
+    keys are the 'Sirovina' values. The values of the inner dictionaries are the average 'Brzina' for the corresponding
+    'Ime' and 'Sirovina'.
+    """
+    df_grouped = df.groupby(['Ime', 'Sirovina'])['Brzina'].mean().round(2)
+    result = {level: df_grouped.xs(level).to_dict() for level in df_grouped.index.levels[0]}
+    return result
+
+def bar_chart(worker: str, avg_person: dict):
+
+    """
+    Generate a bar chart representing the average speed of a worker compared to others.
+
+    Parameters:
+        worker (str): The name of the worker whose average speed is to be visualized.
+        avg_person (dict): A dictionary containing the average speed of the worker 
+                           compared to others. Keys are the names of other workers, 
+                           and values are their average speeds.
+
+    Returns:
+        None: The function displays the bar chart but does not return any value.
+    """
 
     if worker in avg_person.keys():
         avg_person_values = avg_person[worker]
 
     fig, ax = plt.subplots()
-    labels = [i for i in range(len(avg_person_values.keys()))]
     legend_labels = avg_person_values.keys()
     values = avg_person_values.values()
     color_map = plt.get_cmap('tab20') 
-    bars = ax.bar(labels, values, color=color_map(np.arange(len(labels))))
+    bars = ax.bar(legend_labels, values, color=color_map(np.arange(len(legend_labels))))
 
     ax.set_ylabel("Prosječna brzina")
     ax.set_title(worker)
     ax.grid(axis="y")
     ax.bar_label(bars)
-    plt.xticks(fontsize=4)
+    plt.xticks(fontsize=8, rotation = 45, ha = "right")
+    plt.tight_layout()
     ax.legend(bars, legend_labels, fontsize = "4")
     plt.show()
 
-def delete_keys(avg_process_dict, avg_person_dict):
+def filter_dict_by_keys(source_dict: dict, reference_dict: dict) -> dict:
+    """
+    Filters the keys of a source dictionary based on the keys of a reference dictionary.
 
-    avg_process_dict_copy = avg_process_dict.copy()
-    for key in avg_process_dict_copy.keys():
-        if key not in avg_person_dict:
-            del avg_process_dict[key]
+    Args:
+        source_dict (dict): The dictionary to be filtered.
+        reference_dict (dict): The dictionary whose keys are used as a reference for filtering.
 
-    return(avg_process_dict)    
+    Returns:
+        dict: A new dictionary that only includes keys present in both the source and reference dictionaries.
+    """
+    return {key: value for key, value in source_dict.items() if key in reference_dict}
    
 def sort_dictionary(avg_process_dict, avg_person_dict):
     
-    avg_process_dict = delete_keys(avg_process_dict, avg_person_dict)
+    avg_process_dict = filter_dict_by_keys(avg_process_dict, avg_person_dict)
 
     sorted_keys = sorted(avg_person_dict.keys())
 

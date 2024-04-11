@@ -40,11 +40,11 @@ path = "202403 Raw data.xlsx"
 
 df = excel_to_dateframe(path, "Poslije stimulacija", "Datum")
 # workers = unique_values(df,"Ime")
-# avg_person = averages_per_person(df)
+avg_person = averages_per_person(df)
 avg_process = averages_per_process(df)
-print(avg_process)
-# #bar_chart("Snježana Matek", avg_person)
-# #grouped_bar_chart("Snježana Matek", avg_person, avg_process)
+#print(avg_person)
+#bar_chart("Snježana Matek", avg_person)
+grouped_bar_chart("Antonija Kerhlanko", avg_person, avg_process)
 # # for worker in workers:
 # #    bar_chart(worker, avg_person)
 
