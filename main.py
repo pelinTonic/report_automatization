@@ -1,4 +1,5 @@
 from functions import *
+from to_word import *
 
 """
 From the raw data containing date, worker name, speed, and material worked with, you can derive several statistical insights. Here are some suggestions:
@@ -36,16 +37,15 @@ Remember to choose the appropriate statistical techniques based on the nature of
 """
 
 path = "202403 Raw data.xlsx"
-#line_plots(path)
-
 df = excel_to_dateframe(path, "Poslije stimulacija", "Datum")
-# workers = unique_values(df,"Ime")
+
 avg_person = averages_per_person(df)
 avg_process = averages_per_process(df)
-#print(avg_person)
-#bar_chart("Snježana Matek", avg_person)
-grouped_bar_chart("Antonija Kerhlanko", avg_person, avg_process)
-# # for worker in workers:
-# #    bar_chart(worker, avg_person)
 
-# print(number_of_workers_by_std_dev(df))
+
+workers = unique_values(df,"Ime")
+for worker in workers:
+   grouped_bar_chart(worker, avg_person, avg_process)
+   line_plots(path, worker)
+
+create_document("Graf","Izvjestaj")

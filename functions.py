@@ -79,39 +79,38 @@ def remove_outliers(df: pd.DataFrame) -> pd.DataFrame:
     mask = ((numeric_df >= lower_bound) & (numeric_df <= upper_bound)).all(axis=1)
     return df[mask]
 
-def line_plots(path_to_data: str):
-    #Napraviti da radi samo za jednog radnika ne za sves
+def line_plots(path_to_data: str, worker: str):
+
     """ Generate line plots for each worker and material combination based on the provided data.
 
     Args:
         path_to_data (str): The path to the Excel file containing the data.
+        worker (str): Name of the worker for which we want to plot data.
 
     """
     df = excel_to_dateframe(path_to_data, "Poslije stimulacija")
-    workers = df["Ime"].unique()
+    worker_data = df[df["Ime"] == worker]
+    materials = worker_data["Sirovina"].unique()
 
-    for worker in workers:
-        worker_data = df[df["Ime"] == worker]
-        materials = worker_data["Sirovina"].unique()
 
-        for material in materials:
-            material_data = worker_data[worker_data["Sirovina"] == material]
-            material_data = remove_outliers(material_data)
+    for material in materials:
+        material_data = worker_data[worker_data["Sirovina"] == material]
+        material_data = remove_outliers(material_data)
 
-            if len(material_data) > 1:
-                fig, axs = plt.subplots(1, 1, figsize=(10, 5))
-                axs.plot(material_data['Datum'], material_data["Brzina"])
-                axs.set_xlabel('Datum')
-                axs.set_ylabel('Brzina')
-                axs.set_title(f"{worker}, {material}")
-                for x, y in zip(material_data['Datum'], material_data["Brzina"]):
-                    axs.text(x, y, f'{round(y,2)}', ha='center', va='bottom')
+        if len(material_data) > 1:
+            fig, axs = plt.subplots(1, 1, figsize=(10, 5))
+            axs.plot(material_data['Datum'], material_data["Brzina"])
+            axs.set_xlabel('Datum')
+            axs.set_ylabel('Brzina')
+            axs.set_title(f"{worker}, {material}")
+            for x, y in zip(material_data['Datum'], material_data["Brzina"]):
+                axs.text(x, y, f'{round(y,2)}', ha='center', va='bottom')
 
-                plt.tight_layout()
-                plt.savefig(f"{worker}_{material}_plot_without_outliers.png")
-                plt.close()
-            else:
-                pass
+            plt.tight_layout()
+            plt.savefig(f"Graf/{worker}_{material}_plot_without_outliers.png")
+            plt.close()
+        else:
+            pass
 
 def averages_per_process(df: pd.DataFrame) -> dict:
     """Calculate the average speed for each process based on the provided DataFrame.
@@ -191,7 +190,18 @@ def filter_dict_by_keys(source_dict: dict, reference_dict: dict) -> dict:
     """
     return {key: value for key, value in source_dict.items() if key in reference_dict}
    
-def sort_dictionary(avg_process_dict, avg_person_dict):
+def sort_dictionary(avg_process_dict: dict, avg_person_dict: dict) -> tuple:
+    """Sorts two dictionaries based on keys in ascending order and returns them as a tuple.
+
+    Args:
+        avg_process_dict (dict): Dictionary containing process averages.
+        avg_person_dict (dict): Dictionary containing person averages.
+
+    Returns:
+        tuple: A tuple containing two dictionaries sorted based on keys:
+            - First dictionary: avg_process_dict sorted by keys.
+            - Second dictionary: avg_person_dict sorted by keys.
+    """
     
     avg_process_dict = filter_dict_by_keys(avg_process_dict, avg_person_dict)
 
@@ -202,8 +212,17 @@ def sort_dictionary(avg_process_dict, avg_person_dict):
 
     return sort_dictionary, sort_dictionary2
 
-def grouped_bar_chart(worker,avg_person, avg_process):
+def grouped_bar_chart(worker: str, avg_person:dict, avg_process: dict):
+    """Generates a grouped bar chart comparing process average and worker average.
 
+    Args:
+        worker (str): Name of the worker.
+        avg_person (dict): Dictionary containing average values per worker.
+        avg_process (dict): Dictionary containing average values per process.
+
+    Returns:
+        None: This function plots a grouped bar chart and saves the plot as an image.
+    """
     if worker in avg_person.keys():
         avg_person_values = avg_person[worker]
     dictionaries = sort_dictionary(avg_process, avg_person_values)
@@ -213,12 +232,12 @@ def grouped_bar_chart(worker,avg_person, avg_process):
         "Process average": tuple(avg_process.values()),
         "Worker average": tuple(avg_person.values()),
     }
-    print(plot_dictionary)
     x = np.arange(len(avg_process.keys()))
     width = 0.35
     multiplier = 0
     
-    fig, ax = plt.subplots(layout='constrained')
+    fig, ax = plt.subplots(figsize = (11,9))
+    plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.2)
     
     for key, value in plot_dictionary.items():
         offset = width*multiplier
@@ -226,18 +245,26 @@ def grouped_bar_chart(worker,avg_person, avg_process):
         ax.bar_label(bars, padding=2)
         multiplier += 1
 
+
     ax.set_ylabel("Prosječna brzina / kg/h")
     ax.set_title(worker)
     ax.grid(axis="y")
     ax.set_xticks(x + width/2)
     ax.set_xticklabels(avg_process.keys(), ha ="right", rotation=45)
-    plt.xticks(fontsize=8)
+    plt.xticks(fontsize=6)
     ax.legend()
-    plt.savefig(f"{worker}_vs_average.png")
-    plt.show()
+    plt.savefig(f"Graf/{worker}_vs_average.png")
+ 
+def standard_deviation(dataframe: pd.DataFrame) -> dict:
 
-def standard_deviation(dataframe):
+    """Calculates the standard deviation of speed values for each unique raw material in the DataFrame.
 
+    Args:
+        dataframe (pd.DataFrame): DataFrame containing speed values and raw materials.
+
+    Returns:
+        dict: A dictionary where keys are raw materials and values are their corresponding standard deviations.
+    """
     raw_materials = unique_values(dataframe, "Sirovina")
     st_dev_dict = {}
     for material in raw_materials:
@@ -251,8 +278,19 @@ def standard_deviation(dataframe):
 
     return st_dev_dict
 
-def number_of_workers_by_std_dev(dataframe):
+def number_of_workers_by_std_dev(dataframe: pd.DataFrame) -> dict:
+        
+    """Counts the number of workers whose average speed falls within one standard deviation
+    of the process average for each raw material.
 
+    Args:
+        dataframe (pd.DataFrame): DataFrame containing speed values, raw materials, and worker names.
+
+    Returns:
+        dict: A dictionary where keys are raw materials and values are lists of workers whose average
+        speed falls within one standard deviation of the process average for that material.
+    """
+        
     mean_dict = defaultdict(dict)
     st_dev = standard_deviation(dataframe)
     raw_materials = unique_values(dataframe, "Sirovina")
@@ -271,13 +309,12 @@ def number_of_workers_by_std_dev(dataframe):
 
     
     process_average = averages_per_process(dataframe)
-    # za svakog radnika u mean_dict i za svaki proces kod svakog radnika:
 
     workers_in_first_st_dev = {}
 
     for worker, material in mean_dict.items(): 
             raw_materials = material.keys()
-            for materials in raw_materials: #worker = 1; material = 1
+            for materials in raw_materials: 
                 if process_average.get(materials):
                     worker_list = []
                     first_standard_dev_positive = process_average[materials] + st_dev[materials]
